@@ -48,3 +48,21 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## Usage de l'application
+
+Ce projet nécessite l'utilisation de l'API de [https://github.com/MaDesOcr/API-BOOKS](https://github.com/MaDesOcr/API-BOOKS)
+
+Une fois l'API lancée, vous pouvez effectuer la commande:
+```bash
+   npx expo start
+   ```
+Vous pouvez interagir avec l'application en utilisant l'adresse http://localhost:8081/, en utilisant un émultateur Android ou iOS, ou en utilisant Expo Go.
+
+## Possibilités de l'application
+
+- Ajouter un livre
+- Modifier un livre
+- Supprimer un livre
+- Afficher tous les livres
+  
