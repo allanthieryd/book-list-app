@@ -22,20 +22,35 @@ const BookCard: React.FC<BookCardProps> = ({ book, onPress, onEdit, onDelete }) 
     );
   };
 
-  const coverUrl = coverService.getCoverUrl(book.cover, book.isbn);
+  // ✅ Gérer les images locales (file://) et distantes
+  const getCoverSource = () => {
+    // 1. Image locale depuis l'appareil (expo-image-picker)
+    if (book.cover && book.cover.startsWith('file://')) {
+      return { uri: book.cover };
+    }
+
+    // 2. URL distante ou ISBN via coverService
+    const coverUrl = coverService.getCoverUrl(book.cover, book.isbn);
+    if (coverUrl) {
+      return { uri: coverUrl };
+    }
+
+    return null;
+  };
+
+  const coverSource = getCoverSource();
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.cardContent}>
-        {coverUrl && (
+        {coverSource ? (
           <Image
-            source={{ uri: coverUrl }}
+            source={coverSource}
             style={styles.coverImage}
             resizeMode="cover"
             onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
           />
-        )}
-        {!coverUrl && (
+        ) : (
           <View style={styles.placeholderCover}>
             <Text style={styles.placeholderIcon}>📖</Text>
           </View>

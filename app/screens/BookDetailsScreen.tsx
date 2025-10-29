@@ -8,18 +8,24 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Book } from '../../types/Book';
+import { Note } from '../../types/Note';
 import { bookService } from '../../services/bookService';
+import { noteService } from '../../services/noteService';
 import { coverService } from '../../services/coverService';
 import StarRating from '../../components/StarRating';
+import NotesList from '../../components/NotesList';
 
 export default function BookDetailsScreen() {
   const router = useRouter();
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const [book, setBook] = useState<Book | null>(null);
+  const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadingNotes, setLoadingNotes] = useState<boolean>(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [error, setError] = useState<string | null>(null);
   const [updatingRating, setUpdatingRating] = useState<boolean>(false);
@@ -46,9 +52,24 @@ export default function BookDetailsScreen() {
     }
   }, [bookId, router]);
 
+  const loadNotes = useCallback(async () => {
+    if (!bookId) return;
+
+    try {
+      setLoadingNotes(true);
+      const data = await noteService.getNotesByBookId(Number(bookId));
+      setNotes(data);
+    } catch (error) {
+      console.error('Erreur lors du chargement des notes:', error);
+    } finally {
+      setLoadingNotes(false);
+    }
+  }, [bookId]);
+
   useEffect(() => {
     loadBook();
-  }, [loadBook]);
+    loadNotes();
+  }, [loadBook, loadNotes]);
 
   const handleRatingChange = async (newRating: number) => {
     if (!book || !bookId) return;
@@ -68,6 +89,13 @@ export default function BookDetailsScreen() {
     } finally {
       setUpdatingRating(false);
     }
+  };
+
+  const handleAddNote = async (content: string) => {
+    if (!bookId) return;
+
+    await noteService.createNote(Number(bookId), { content });
+    await loadNotes(); // Recharger les notes
   };
 
   const handleDelete = () => {
@@ -118,14 +146,35 @@ export default function BookDetailsScreen() {
     );
   }
 
-  const coverUrl = coverService.getCoverUrl(book.cover, book.isbn);
+  // ✅ Déterminer l'URL de la couverture en gérant les images locales
+  const getCoverSource = () => {
+    // 1. Image locale depuis l'appareil (file://)
+    if (book.cover && book.cover.startsWith('file://')) {
+      return { uri: book.cover };
+    }
+
+    // 2. URL distante (http/https) ou ISBN via coverService
+    const coverUrl = coverService.getCoverUrl(book.cover, book.isbn);
+    if (coverUrl) {
+      return { uri: coverUrl };
+    }
+
+    return null;
+  };
+
+  const coverSource = getCoverSource();
 
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.coverContainer}>
-          {coverUrl ? (
-            <Image source={{ uri: coverUrl }} style={styles.coverImage} resizeMode="cover" />
+          {coverSource ? (
+            <Image 
+              source={coverSource} 
+              style={styles.coverImage} 
+              resizeMode="cover"
+              onError={(e) => console.log('Erreur de chargement image:', e.nativeEvent.error)}
+            />
           ) : (
             <View style={styles.coverPlaceholder}>
               <Text style={styles.coverIcon}>📖</Text>
@@ -189,6 +238,11 @@ export default function BookDetailsScreen() {
               </View>
             )}
           </View>
+
+          {/* Section Notes */}
+          <View style={styles.notesSection}>
+            <NotesList notes={notes} onAddNote={handleAddNote} loading={loadingNotes} />
+          </View>
         </View>
       </ScrollView>
 
@@ -236,12 +290,13 @@ const styles = StyleSheet.create({
   coverContainer: {
     width: '100%',
     alignItems: 'center',
-    backgroundColor: '#000', // Fond noir pour le letterbox
+    backgroundColor: '#000',
+    marginTop: Platform.OS === 'web' ? 0 : 80,
   },
   coverImage: {
     width: '100%',
-    maxWidth: 600,
-    minHeight: 550,
+    maxWidth: 500,
+    height: 400,
     backgroundColor: '#f0f0f0',
   },
   coverPlaceholder: {
@@ -342,6 +397,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -371,6 +427,9 @@ const styles = StyleSheet.create({
     color: '#333',
     flex: 1,
     textAlign: 'right',
+  },
+  notesSection: {
+    marginBottom: 20,
   },
   actionContainer: {
     flexDirection: 'row',

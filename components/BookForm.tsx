@@ -291,6 +291,15 @@ const BookForm: React.FC<BookFormProps> = ({
           />
         </View>
 
+        {initialValues && initialValues.id && (
+          <View style={styles.notesFormSection}>
+            <Text style={styles.sectionTitle}>📝 Notes</Text>
+            <Text style={styles.helperText}>
+              Les notes peuvent être ajoutées depuis la page de détails du livre
+            </Text>
+          </View>
+        )}
+
         <View style={styles.buttonContainer}>
           <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={onCancel}>
             <Text style={styles.buttonText}>Annuler</Text>
@@ -395,6 +404,14 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 8,
     marginBottom: 15,
+  },
+  notesFormSection: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
   buttonContainer: {
     flexDirection: 'row',
