@@ -1,6 +1,6 @@
 import { Book, CreateBookDTO, UpdateBookDTO } from '../types/Book';
 
-const API_URL = 'http://localhost:3000/books';
+const API_URL = 'https://api.books.tristan-renard.com/books';
 
 export const bookService = {
   // GET - Récupérer tous les livres

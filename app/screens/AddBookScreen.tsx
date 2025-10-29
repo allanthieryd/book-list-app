@@ -14,7 +14,8 @@ export default function AddBookScreen() {
       setError(null);
       await bookService.createBook({
         ...data,
-        cover: null,
+        isbn: data.isbn || undefined,
+        cover: data.cover || null,
       });
       Alert.alert('Succès', 'Le livre a été ajouté', [
         {

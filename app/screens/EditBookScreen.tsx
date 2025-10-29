@@ -46,7 +46,8 @@ export default function EditBookScreen() {
       setError(null);
       await bookService.updateBook(Number(bookId), {
         ...data,
-        cover: null,
+        isbn: data.isbn || undefined,
+        cover: data.cover || null,
       });
       Alert.alert('Succès', 'Le livre a été modifié', [
         {

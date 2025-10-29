@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { Book } from '../types/Book';
 
@@ -28,6 +29,8 @@ export interface BookFormData {
   rating: number;
   read: boolean;
   favorite: boolean;
+  isbn?: string;
+  cover: string | null;
 }
 
 const BookForm: React.FC<BookFormProps> = ({
@@ -45,9 +48,34 @@ const BookForm: React.FC<BookFormProps> = ({
     rating: initialValues?.rating || 0,
     read: initialValues?.read || false,
     favorite: initialValues?.favorite || false,
+    isbn: initialValues?.isbn || '',
+    cover: initialValues?.cover || null,
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+
+  // Générer l'URL de preview de la couverture
+  useEffect(() => {
+    const generateCoverPreview = () => {
+      // URL personnalisée
+      if (formData.cover && (formData.cover.startsWith('http://') || formData.cover.startsWith('https://'))) {
+        setCoverPreview(formData.cover);
+        return;
+      }
+
+      // ISBN Open Library
+      if (formData.isbn && formData.isbn.length >= 10) {
+        const cleanIsbn = formData.isbn.replace(/[-\s]/g, '');
+        setCoverPreview(`https://covers.openlibrary.org/b/isbn/${cleanIsbn}-M.jpg`);
+        return;
+      }
+
+      setCoverPreview(null);
+    };
+
+    generateCoverPreview();
+  }, [formData.isbn, formData.cover]);
 
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
@@ -148,6 +176,48 @@ const BookForm: React.FC<BookFormProps> = ({
         </View>
 
         <View style={styles.formGroup}>
+          <Text style={styles.label}>ISBN</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.isbn}
+            onChangeText={(text) => setFormData({ ...formData, isbn: text })}
+            placeholder="ISBN-10 ou ISBN-13"
+            placeholderTextColor="#999"
+          />
+          <Text style={styles.helperText}>
+            💡 Renseignez l&apos;ISBN pour charger automatiquement la couverture depuis Open Library
+          </Text>
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>URL de couverture (optionnel)</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.cover || ''}
+            onChangeText={(text) => setFormData({ ...formData, cover: text || null })}
+            placeholder="https://exemple.com/image.jpg"
+            placeholderTextColor="#999"
+            autoCapitalize="none"
+            keyboardType="url"
+          />
+          <Text style={styles.helperText}>
+            Laissez vide pour utiliser l&apos;ISBN, ou collez une URL d&apos;image personnalisée
+          </Text>
+        </View>
+
+        {coverPreview && (
+          <View style={styles.previewContainer}>
+            <Text style={styles.previewLabel}>Aperçu de la couverture</Text>
+            <Image
+              source={{ uri: coverPreview }}
+              style={styles.coverPreview}
+              resizeMode="contain"
+              onError={() => setCoverPreview(null)}
+            />
+          </View>
+        )}
+
+        <View style={styles.formGroup}>
           <Text style={styles.label}>Note (0-5)</Text>
           <TextInput
             style={[styles.input, errors.rating && styles.inputError]}
@@ -230,6 +300,30 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     fontSize: 14,
     marginTop: 5,
+  },
+  helperText: {
+    color: '#666',
+    fontSize: 12,
+    marginTop: 5,
+    fontStyle: 'italic',
+  },
+  previewContainer: {
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  previewLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 10,
+  },
+  coverPreview: {
+    width: 150,
+    height: 225,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   switchContainer: {
     flexDirection: 'row',

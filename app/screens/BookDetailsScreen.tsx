@@ -7,10 +7,12 @@ import {
   Alert,
   TouchableOpacity,
   ScrollView,
+  Image,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Book } from '../../types/Book';
 import { bookService } from '../../services/bookService';
+import { coverService } from '../../services/coverService';
 
 export default function BookDetailsScreen() {
   const router = useRouter();
@@ -94,12 +96,24 @@ export default function BookDetailsScreen() {
     );
   }
 
+  const coverUrl = coverService.getCoverUrl(book.cover, book.isbn);
+
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.coverPlaceholder}>
-          <Text style={styles.coverIcon}>📖</Text>
-        </View>
+      <View style={styles.coverContainer}>
+        {coverUrl ? (
+          <Image
+            source={{ uri: coverUrl }}
+            style={styles.coverImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.coverPlaceholder}>
+            <Text style={styles.coverIcon}>📖</Text>
+          </View>
+        )}
+      </View>
 
         <View style={styles.content}>
           <Text style={styles.title}>{book.name}</Text>
@@ -139,6 +153,12 @@ export default function BookDetailsScreen() {
               <Text style={styles.infoLabel}>Thème</Text>
               <Text style={styles.infoValue}>{book.theme}</Text>
             </View>
+            {book.isbn && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>ISBN</Text>
+                <Text style={styles.infoValue}>{book.isbn}</Text>
+              </View>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -184,9 +204,21 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  coverContainer: {
+    width: '100%',
+    alignItems: 'center',
+    backgroundColor: '#000', // Fond noir pour le letterbox
+  },
+  coverImage: {
+    width: '100%',
+    maxWidth: 600,
+    minHeight: 550,
+    backgroundColor: '#f0f0f0',
+  },
   coverPlaceholder: {
     width: '100%',
-    height: 250,
+    maxWidth: 500,
+    height: 400,
     backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
@@ -287,7 +319,7 @@ const styles = StyleSheet.create({
   },
   actionContainer: {
     flexDirection: 'row',
-    padding: 15,
+    padding: 20,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',

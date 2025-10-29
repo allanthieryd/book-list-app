@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
 import { Book } from '../types/Book';
+import { coverService } from '../services/coverService';
 
 interface BookCardProps {
   book: Book;
@@ -21,30 +22,50 @@ const BookCard: React.FC<BookCardProps> = ({ book, onPress, onEdit, onDelete }) 
     );
   };
 
+  const coverUrl = coverService.getCoverUrl(book.cover, book.isbn);
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.cardHeader}>
-        <View style={styles.bookInfo}>
-          <Text style={styles.title}>{book.name}</Text>
-          <Text style={styles.author}>{book.author}</Text>
-          <Text style={styles.details}>
-            {book.editor} • {book.year}
-          </Text>
-          <Text style={styles.theme}>{book.theme}</Text>
+      <View style={styles.cardContent}>
+        {coverUrl && (
+          <Image
+            source={{ uri: coverUrl }}
+            style={styles.coverImage}
+            resizeMode="cover"
+            onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
+          />
+        )}
+        {!coverUrl && (
+          <View style={styles.placeholderCover}>
+            <Text style={styles.placeholderIcon}>📖</Text>
+          </View>
+        )}
+        
+        <View style={styles.cardBody}>
+          <View style={styles.cardHeader}>
+            <View style={styles.bookInfo}>
+              <Text style={styles.title} numberOfLines={2}>{book.name}</Text>
+              <Text style={styles.author} numberOfLines={1}>{book.author}</Text>
+              <Text style={styles.details}>
+                {book.editor} • {book.year}
+              </Text>
+              <Text style={styles.theme}>{book.theme}</Text>
+            </View>
+            <View style={styles.bookMeta}>
+              <Text style={styles.rating}>⭐ {book.rating}/5</Text>
+              {book.read && <Text style={styles.badge}>✓ Lu</Text>}
+              {book.favorite && <Text style={styles.favoriteBadge}>❤️</Text>}
+            </View>
+          </View>
+          <View style={styles.actions}>
+            <TouchableOpacity style={[styles.button, styles.editButton]} onPress={onEdit}>
+              <Text style={styles.buttonText}>Modifier</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.button, styles.deleteButton]} onPress={handleDelete}>
+              <Text style={styles.buttonText}>Supprimer</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <View style={styles.bookMeta}>
-          <Text style={styles.rating}>⭐ {book.rating}/5</Text>
-          {book.read && <Text style={styles.badge}>✓ Lu</Text>}
-          {book.favorite && <Text style={styles.favoriteBadge}>❤️</Text>}
-        </View>
-      </View>
-      <View style={styles.actions}>
-        <TouchableOpacity style={[styles.button, styles.editButton]} onPress={onEdit}>
-          <Text style={styles.buttonText}>Modifier</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.button, styles.deleteButton]} onPress={handleDelete}>
-          <Text style={styles.buttonText}>Supprimer</Text>
-        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -62,10 +83,36 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  cardContent: {
+    flexDirection: 'row',
+  },
+  coverImage: {
+    width: 80,
+    height: 120,
+    borderRadius: 8,
+    marginRight: 15,
+    backgroundColor: '#f0f0f0',
+  },
+  placeholderCover: {
+    width: 80,
+    height: 120,
+    borderRadius: 8,
+    marginRight: 15,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderIcon: {
+    fontSize: 32,
+  },
+  cardBody: {
+    flex: 1,
+  },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 15,
+    flex: 1,
   },
   bookInfo: {
     flex: 1,

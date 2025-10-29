@@ -9,6 +9,7 @@ export interface Book {
   rating: number;
   cover: string | null;
   theme: string;
+  isbn?: string;
 }
 
 export interface CreateBookDTO {
@@ -21,6 +22,7 @@ export interface CreateBookDTO {
   rating: number;
   cover: string | null;
   theme: string;
+  isbn?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
