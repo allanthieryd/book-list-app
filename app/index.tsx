@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,9 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Book } from '../types/Book';
 import { bookService } from '../services/bookService';
 import BookCard from '../components/BookCard';
+import SearchBar from '../components/SearchBar';
+import FilterBar, { FilterType, SortType } from '../components/FilterBar';
+import { searchIncludes } from '../utils/searchHelper';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -21,8 +24,11 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [activeSort, setActiveSort] = useState<SortType>('title');
 
-  const loadBooks = async () => {
+  const loadBooks = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -35,7 +41,7 @@ export default function HomeScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -46,29 +52,102 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       loadBooks();
-    }, [])
+    }, [loadBooks])
   );
 
-  const handleDeleteBook = async (id: number) => {
-    try {
-      await bookService.deleteBook(id);
-      setBooks(books.filter((book) => book.id !== id));
-      Alert.alert('Succès', 'Le livre a été supprimé');
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-      setError(errorMessage);
-      Alert.alert('Erreur', 'Impossible de supprimer le livre');
+  // ✅ OPTIMISATION : Calcul des livres filtrés avec useMemo (pas de re-calcul inutile)
+  const filteredBooks = useMemo(() => {
+    let result = [...books];
+
+    // 1. Appliquer la recherche (avec gestion UTF-8)
+    if (searchQuery.trim() !== '') {
+      result = result.filter((book) => {
+        const titleMatch = searchIncludes(book.name, searchQuery);
+        const authorMatch = searchIncludes(book.author, searchQuery);
+        return titleMatch || authorMatch;
+      });
     }
+
+    // 2. Appliquer le filtre
+    switch (activeFilter) {
+      case 'read':
+        result = result.filter((book) => book.read);
+        break;
+      case 'unread':
+        result = result.filter((book) => !book.read);
+        break;
+      case 'favorite':
+        result = result.filter((book) => book.favorite);
+        break;
+      case 'all':
+      default:
+        break;
+    }
+
+    // 3. Appliquer le tri
+    result.sort((a, b) => {
+      switch (activeSort) {
+        case 'title':
+          return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
+        case 'author':
+          return a.author.localeCompare(b.author, 'fr', { sensitivity: 'base' });
+        case 'theme':
+          return a.theme.localeCompare(b.theme, 'fr', { sensitivity: 'base' });
+        case 'rating':
+          return b.rating - a.rating;
+        case 'year':
+          return b.year - a.year;
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [books, searchQuery, activeFilter, activeSort]); // ✅ Recalcule seulement si ces valeurs changent
+
+  // Gérer la recherche
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    // ✅ Plus besoin d'appeler une fonction - useMemo s'en charge automatiquement
   };
 
-  const renderBook = ({ item }: { item: Book }) => (
-    <BookCard
-      book={item}
-      onPress={() => router.push(`/screens/BookDetailsScreen?bookId=${item.id}`)}
-      onEdit={() => router.push(`/screens/EditBookScreen?bookId=${item.id}`)}
-      onDelete={() => handleDeleteBook(item.id)}
-    />
+  // Gérer le changement de filtre
+  const handleFilterChange = (filter: FilterType) => {
+    setActiveFilter(filter);
+  };
+
+  // Gérer le changement de tri
+  const handleSortChange = (sort: SortType) => {
+    setActiveSort(sort);
+  };
+
+  const handleDeleteBook = useCallback(async (id: number) => {
+  try {
+    await bookService.deleteBook(id);
+    const updatedBooks = books.filter((book) => book.id !== id);
+    setBooks(updatedBooks);
+    Alert.alert('Succès', 'Le livre a été supprimé');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+    setError(errorMessage);
+    Alert.alert('Erreur', 'Impossible de supprimer le livre');
+  }
+  }, [books]);
+
+  const renderBook = useCallback(
+    ({ item }: { item: Book }) => (
+      <BookCard
+        book={item}
+        onPress={() => router.push(`/screens/BookDetailsScreen?bookId=${item.id}`)}
+        onEdit={() => router.push(`/screens/EditBookScreen?bookId=${item.id}`)}
+        onDelete={() => handleDeleteBook(item.id)}
+      />
+    ),
+    [router, handleDeleteBook]
   );
+
+  // ✅ Optimisation : keyExtractor mémorisé
+  const keyExtractor = useCallback((item: Book) => item.id.toString(), []);
 
   if (loading) {
     return (
@@ -81,17 +160,45 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
+      <SearchBar
+        value={searchQuery}
+        onChangeText={handleSearch}
+        placeholder="Rechercher par titre ou auteur..."
+      />
+
+      <FilterBar
+        activeFilter={activeFilter}
+        activeSort={activeSort}
+        onFilterChange={handleFilterChange}
+        onSortChange={handleSortChange}
+        resultCount={filteredBooks.length}
+      />
+
       <FlatList
-        data={books}
+        data={filteredBooks}
         renderItem={renderBook}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContainer}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        // ✅ Optimisations performance FlatList
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        initialNumToRender={10}
+        windowSize={10}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>📚</Text>
-            <Text style={styles.emptyTitle}>Aucun livre</Text>
-            <Text style={styles.emptySubtitle}>Ajoutez votre premier livre</Text>
+            <Text style={styles.emptyText}>
+              {searchQuery || activeFilter !== 'all' ? '🔍' : '📚'}
+            </Text>
+            <Text style={styles.emptyTitle}>
+              {searchQuery || activeFilter !== 'all' ? 'Aucun résultat' : 'Aucun livre'}
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              {searchQuery || activeFilter !== 'all'
+                ? 'Essayez de modifier vos critères'
+                : 'Ajoutez votre premier livre'}
+            </Text>
           </View>
         }
       />
@@ -108,9 +215,9 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 30,
     flex: 1,
     backgroundColor: '#f5f5f5',
+    marginTop: 30,
   },
   centered: {
     flex: 1,
@@ -150,8 +257,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 20,
     bottom: 20,
-    width: 50,
-    height: 50,
+    width: 60,
+    height: 60,
     borderRadius: 30,
     backgroundColor: '#007AFF',
     justifyContent: 'center',

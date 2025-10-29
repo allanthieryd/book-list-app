@@ -13,6 +13,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Book } from '../../types/Book';
 import { bookService } from '../../services/bookService';
 import { coverService } from '../../services/coverService';
+import StarRating from '../../components/StarRating';
 
 export default function BookDetailsScreen() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function BookDetailsScreen() {
   const [loading, setLoading] = useState<boolean>(true);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [error, setError] = useState<string | null>(null);
+  const [updatingRating, setUpdatingRating] = useState<boolean>(false);
 
   const loadBook = useCallback(async () => {
     if (!bookId) return;
@@ -47,6 +49,26 @@ export default function BookDetailsScreen() {
   useEffect(() => {
     loadBook();
   }, [loadBook]);
+
+  const handleRatingChange = async (newRating: number) => {
+    if (!book || !bookId) return;
+
+    try {
+      setUpdatingRating(true);
+      await bookService.updateBook(Number(bookId), {
+        ...book,
+        rating: newRating,
+      });
+      setBook({ ...book, rating: newRating });
+      Alert.alert('Succès', `Note mise à jour : ${newRating}/5`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      setError(errorMessage);
+      Alert.alert('Erreur', 'Impossible de mettre à jour la note');
+    } finally {
+      setUpdatingRating(false);
+    }
+  };
 
   const handleDelete = () => {
     if (!bookId) return;
@@ -101,32 +123,43 @@ export default function BookDetailsScreen() {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-      <View style={styles.coverContainer}>
-        {coverUrl ? (
-          <Image
-            source={{ uri: coverUrl }}
-            style={styles.coverImage}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={styles.coverPlaceholder}>
-            <Text style={styles.coverIcon}>📖</Text>
-          </View>
-        )}
-      </View>
+        <View style={styles.coverContainer}>
+          {coverUrl ? (
+            <Image source={{ uri: coverUrl }} style={styles.coverImage} resizeMode="cover" />
+          ) : (
+            <View style={styles.coverPlaceholder}>
+              <Text style={styles.coverIcon}>📖</Text>
+            </View>
+          )}
+        </View>
 
         <View style={styles.content}>
           <Text style={styles.title}>{book.name}</Text>
           <Text style={styles.author}>{book.author}</Text>
 
+          <View style={styles.ratingSection}>
+            <Text style={styles.ratingLabel}>Votre note :</Text>
+            <StarRating
+              rating={book.rating}
+              onRatingChange={handleRatingChange}
+              size={40}
+              interactive={true}
+            />
+            {updatingRating && (
+              <ActivityIndicator size="small" color="#007AFF" style={styles.ratingLoader} />
+            )}
+          </View>
+
           <View style={styles.metaContainer}>
-            <View style={styles.metaItem}>
-              <Text style={styles.metaLabel}>Note</Text>
-              <Text style={styles.metaValue}>⭐ {book.rating}/5</Text>
-            </View>
             <View style={styles.metaItem}>
               <Text style={styles.metaLabel}>Année</Text>
               <Text style={styles.metaValue}>{book.year}</Text>
+            </View>
+            <View style={styles.metaItem}>
+              <Text style={styles.metaLabel}>Éditeur</Text>
+              <Text style={styles.metaValue} numberOfLines={1}>
+                {book.editor}
+              </Text>
             </View>
           </View>
 
@@ -145,10 +178,6 @@ export default function BookDetailsScreen() {
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Informations</Text>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Éditeur</Text>
-              <Text style={styles.infoValue}>{book.editor}</Text>
-            </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Thème</Text>
               <Text style={styles.infoValue}>{book.theme}</Text>
@@ -240,6 +269,27 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 20,
   },
+  ratingSection: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    alignItems: 'center',
+  },
+  ratingLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 15,
+  },
+  ratingLoader: {
+    marginTop: 10,
+  },
   metaContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -255,6 +305,7 @@ const styles = StyleSheet.create({
   },
   metaItem: {
     alignItems: 'center',
+    flex: 1,
   },
   metaLabel: {
     fontSize: 14,
@@ -265,11 +316,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
+    textAlign: 'center',
   },
   statusContainer: {
     flexDirection: 'row',
     gap: 10,
     marginBottom: 20,
+    justifyContent: 'center',
   },
   badge: {
     backgroundColor: '#34C759',
@@ -316,6 +369,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+    flex: 1,
+    textAlign: 'right',
   },
   actionContainer: {
     flexDirection: 'row',

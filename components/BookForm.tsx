@@ -12,6 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { Book } from '../types/Book';
+import ImagePickerButton from './ImagePickerButton';
 
 interface BookFormProps {
   initialValues?: Book;
@@ -54,13 +55,22 @@ const BookForm: React.FC<BookFormProps> = ({
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [useDeviceImage, setUseDeviceImage] = useState<boolean>(false);
 
   // Générer l'URL de preview de la couverture
   useEffect(() => {
     const generateCoverPreview = () => {
+      // Image depuis l'appareil (URI locale)
+      if (formData.cover && formData.cover.startsWith('file://')) {
+        setCoverPreview(formData.cover);
+        setUseDeviceImage(true);
+        return;
+      }
+
       // URL personnalisée
       if (formData.cover && (formData.cover.startsWith('http://') || formData.cover.startsWith('https://'))) {
         setCoverPreview(formData.cover);
+        setUseDeviceImage(false);
         return;
       }
 
@@ -68,14 +78,20 @@ const BookForm: React.FC<BookFormProps> = ({
       if (formData.isbn && formData.isbn.length >= 10) {
         const cleanIsbn = formData.isbn.replace(/[-\s]/g, '');
         setCoverPreview(`https://covers.openlibrary.org/b/isbn/${cleanIsbn}-M.jpg`);
+        setUseDeviceImage(false);
         return;
       }
 
       setCoverPreview(null);
+      setUseDeviceImage(false);
     };
 
     generateCoverPreview();
   }, [formData.isbn, formData.cover]);
+
+  const handleImageSelected = (uri: string) => {
+    setFormData({ ...formData, cover: uri || null });
+  };
 
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
@@ -175,47 +191,72 @@ const BookForm: React.FC<BookFormProps> = ({
           />
         </View>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>ISBN</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.isbn}
-            onChangeText={(text) => setFormData({ ...formData, isbn: text })}
-            placeholder="ISBN-10 ou ISBN-13"
-            placeholderTextColor="#999"
-          />
-          <Text style={styles.helperText}>
-            💡 Renseignez l&apos;ISBN pour charger automatiquement la couverture depuis Open Library
-          </Text>
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>URL de couverture (optionnel)</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.cover || ''}
-            onChangeText={(text) => setFormData({ ...formData, cover: text || null })}
-            placeholder="https://exemple.com/image.jpg"
-            placeholderTextColor="#999"
-            autoCapitalize="none"
-            keyboardType="url"
-          />
-          <Text style={styles.helperText}>
-            Laissez vide pour utiliser l&apos;ISBN, ou collez une URL d&apos;image personnalisée
-          </Text>
-        </View>
-
-        {coverPreview && (
-          <View style={styles.previewContainer}>
-            <Text style={styles.previewLabel}>Aperçu de la couverture</Text>
-            <Image
-              source={{ uri: coverPreview }}
-              style={styles.coverPreview}
-              resizeMode="contain"
-              onError={() => setCoverPreview(null)}
+        {/* Section Couverture */}
+        <View style={styles.coverSection}>
+          <Text style={styles.sectionTitle}>Couverture du livre</Text>
+          
+          {/* Option 1 : Image depuis l'appareil */}
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>📷 Depuis l&apos;appareil</Text>
+            <ImagePickerButton
+              onImageSelected={handleImageSelected}
+              currentImage={useDeviceImage ? formData.cover : null}
             />
           </View>
-        )}
+
+          {/* Option 2 : ISBN */}
+          {!useDeviceImage && (
+            <>
+              <Text style={styles.orText}>— OU —</Text>
+              
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>📚 ISBN</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.isbn}
+                  onChangeText={(text) => setFormData({ ...formData, isbn: text })}
+                  placeholder="ISBN-10 ou ISBN-13"
+                  placeholderTextColor="#999"
+                />
+                <Text style={styles.helperText}>
+                  Charge automatiquement depuis Open Library
+                </Text>
+              </View>
+
+              <Text style={styles.orText}>— OU —</Text>
+
+              {/* Option 3 : URL */}
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>🔗 URL d&apos;image</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.cover && !formData.cover.startsWith('file://') ? formData.cover : ''}
+                  onChangeText={(text) => setFormData({ ...formData, cover: text || null })}
+                  placeholder="https://exemple.com/image.jpg"
+                  placeholderTextColor="#999"
+                  autoCapitalize="none"
+                  keyboardType="url"
+                />
+                <Text style={styles.helperText}>
+                  Collez une URL d&apos;image personnalisée
+                </Text>
+              </View>
+            </>
+          )}
+
+          {/* Preview */}
+          {coverPreview && !useDeviceImage && (
+            <View style={styles.previewContainer}>
+              <Text style={styles.previewLabel}>Aperçu</Text>
+              <Image
+                source={{ uri: coverPreview }}
+                style={styles.coverPreview}
+                resizeMode="contain"
+                onError={() => setCoverPreview(null)}
+              />
+            </View>
+          )}
+        </View>
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Note (0-5)</Text>
@@ -307,8 +348,29 @@ const styles = StyleSheet.create({
     marginTop: 5,
     fontStyle: 'italic',
   },
-  previewContainer: {
+  coverSection: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+  },
+  orText: {
+    textAlign: 'center',
+    color: '#999',
+    fontSize: 14,
+    marginVertical: 15,
+    fontWeight: '600',
+  },
+  previewContainer: {
+    marginTop: 15,
     alignItems: 'center',
   },
   previewLabel: {
