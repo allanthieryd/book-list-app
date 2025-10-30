@@ -10,9 +10,7 @@ export const coverService = {
     return `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-${size}.jpg`;
   },
 
-  /**
-   * Vérifie si une URL d'image est valide
-   */
+
   async validateImageUrl(url: string): Promise<boolean> {
     try {
       const response = await fetch(url, { method: 'HEAD' });
@@ -22,17 +20,11 @@ export const coverService = {
     }
   },
 
-  /**
-   * Obtient l'URL finale de la couverture
-   * Priorité : URL custom > ISBN Open Library
-   */
   getCoverUrl(cover: string | null, isbn?: string): string | null {
-    // Si on a une URL personnalisée
     if (cover && (cover.startsWith('http://') || cover.startsWith('https://'))) {
       return cover;
     }
 
-    // Si on a un ISBN, utiliser Open Library
     if (isbn) {
       return this.getOpenLibraryCoverUrl(isbn, 'L');
     }
@@ -40,9 +32,6 @@ export const coverService = {
     return null;
   },
 
-  /**
-   * URL de placeholder si pas de couverture
-   */
   getPlaceholderUrl(): string {
     return 'https://via.placeholder.com/300x450/007AFF/FFFFFF?text=Pas+de+couverture';
   },

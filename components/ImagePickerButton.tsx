@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { uploadCoverService } from '../services/uploadCoverService';
 
 interface ImagePickerButtonProps {
   onImageSelected: (uri: string) => void;
@@ -43,16 +44,45 @@ const ImagePickerButton: React.FC<ImagePickerButtonProps> = ({
 
       setUploading(true);
 
+      // 1. Sélectionner l'image
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsEditing: false, // ✅ DÉSACTIVÉ pour éviter le problème du bouton invisible
+        allowsEditing: false,
         quality: 0.8,
         base64: false,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        const imageUri = result.assets[0].uri;
-        onImageSelected(imageUri);
+        const localUri = result.assets[0].uri;
+
+        // 2. Uploader l'image vers le serveur
+        try {
+          const uploadResponse = await uploadCoverService.uploadImage(localUri);
+
+          if (uploadResponse.url) {
+            // ✅ Utiliser l'URL du serveur au lieu de l'URI locale
+            onImageSelected(uploadResponse.url);
+            Alert.alert('Succès', 'Image uploadée avec succès');
+          } else {
+            throw new Error('Pas d\'URL dans la réponse');
+          }
+        } catch (uploadError) {
+          console.error('Erreur upload:', uploadError);
+          Alert.alert(
+            'Erreur',
+            'Impossible d\'uploader l\'image. Voulez-vous utiliser l\'image locale ?',
+            [
+              {
+                text: 'Non',
+                style: 'cancel',
+              },
+              {
+                text: 'Oui',
+                onPress: () => onImageSelected(localUri), // Fallback vers URI locale
+              },
+            ]
+          );
+        }
       }
     } catch (error) {
       console.error('Erreur lors de la sélection de l\'image:', error);
@@ -75,14 +105,42 @@ const ImagePickerButton: React.FC<ImagePickerButtonProps> = ({
 
       setUploading(true);
 
+      // 1. Prendre la photo
       const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: false, // ✅ DÉSACTIVÉ aussi pour la caméra
+        allowsEditing: false,
         quality: 0.8,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        const imageUri = result.assets[0].uri;
-        onImageSelected(imageUri);
+        const localUri = result.assets[0].uri;
+
+        // 2. Uploader la photo vers le serveur
+        try {
+          const uploadResponse = await uploadCoverService.uploadImage(localUri);
+
+          if (uploadResponse.url) {
+            onImageSelected(uploadResponse.url);
+            Alert.alert('Succès', 'Photo uploadée avec succès');
+          } else {
+            throw new Error('Pas d\'URL dans la réponse');
+          }
+        } catch (uploadError) {
+          console.error('Erreur upload:', uploadError);
+          Alert.alert(
+            'Erreur',
+            'Impossible d\'uploader la photo. Voulez-vous utiliser l\'image locale ?',
+            [
+              {
+                text: 'Non',
+                style: 'cancel',
+              },
+              {
+                text: 'Oui',
+                onPress: () => onImageSelected(localUri), // Fallback vers URI locale
+              },
+            ]
+          );
+        }
       }
     } catch (error) {
       console.error('Erreur lors de la prise de photo:', error);
@@ -143,7 +201,9 @@ const ImagePickerButton: React.FC<ImagePickerButtonProps> = ({
               onPress={showImageOptions}
               disabled={uploading}
             >
-              <Text style={styles.changeButtonText}>Changer</Text>
+              <Text style={styles.changeButtonText}>
+                {uploading ? 'Upload...' : 'Changer'}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.removeButton}
@@ -153,6 +213,13 @@ const ImagePickerButton: React.FC<ImagePickerButtonProps> = ({
               <Text style={styles.removeButtonText}>Supprimer</Text>
             </TouchableOpacity>
           </View>
+          {uploading && (
+            <ActivityIndicator
+              size="small"
+              color="#007AFF"
+              style={styles.uploadingIndicator}
+            />
+          )}
         </View>
       ) : (
         <TouchableOpacity
@@ -161,7 +228,10 @@ const ImagePickerButton: React.FC<ImagePickerButtonProps> = ({
           disabled={uploading}
         >
           {uploading ? (
-            <ActivityIndicator color="#007AFF" />
+            <>
+              <ActivityIndicator color="#007AFF" size="large" />
+              <Text style={styles.uploadingText}>Upload en cours...</Text>
+            </>
           ) : (
             <>
               <Text style={styles.pickIcon}>📷</Text>
@@ -204,6 +274,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
+  uploadingText: {
+    fontSize: 14,
+    color: '#007AFF',
+    marginTop: 10,
+  },
   imageContainer: {
     alignItems: 'center',
   },
@@ -239,6 +314,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  uploadingIndicator: {
+    marginTop: 10,
   },
 });
 
