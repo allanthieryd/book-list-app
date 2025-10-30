@@ -29,6 +29,8 @@ export default function BookDetailsScreen() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [error, setError] = useState<string | null>(null);
   const [updatingRating, setUpdatingRating] = useState<boolean>(false);
+  const [editionsCount, setEditionsCount] = useState<number | null>(null);
+  const [loadingEditions, setLoadingEditions] = useState<boolean>(false);
 
   const loadBook = useCallback(async () => {
     if (!bookId) return;
@@ -66,10 +68,30 @@ export default function BookDetailsScreen() {
     }
   }, [bookId]);
 
+  const loadEditionsCount = useCallback(async () => {
+    if (!book) return;
+
+    try {
+      setLoadingEditions(true);
+      const count = await coverService.getEditionsCount(book.name, book.author);
+      setEditionsCount(count);
+    } catch (error) {
+      console.error('Erreur lors du chargement du nombre d\'éditions:', error);
+    } finally {
+      setLoadingEditions(false);
+    }
+  }, [book]);
+
   useEffect(() => {
     loadBook();
     loadNotes();
   }, [loadBook, loadNotes]);
+
+  useEffect(() => {
+    if (book) {
+      loadEditionsCount();
+    }
+  }, [loadEditionsCount, book]);
 
   const handleRatingChange = async (newRating: number) => {
     if (!book || !bookId) return;
@@ -237,6 +259,20 @@ export default function BookDetailsScreen() {
                 <Text style={styles.infoValue}>{book.isbn}</Text>
               </View>
             )}
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Éditions OpenLibrary</Text>
+              {loadingEditions ? (
+                <ActivityIndicator size="small" color="#007AFF" />
+              ) : editionsCount !== null ? (
+                <Text style={styles.infoValue}>
+                  {editionsCount} édition{editionsCount > 1 ? 's' : ''} référencée{editionsCount > 1 ? 's' : ''}
+                </Text>
+              ) : (
+                <Text style={[styles.infoValue, styles.infoError]}>
+                  Non disponible
+                </Text>
+              )}
+            </View>
           </View>
 
           {/* Section Notes */}
@@ -427,6 +463,10 @@ const styles = StyleSheet.create({
     color: '#333',
     flex: 1,
     textAlign: 'right',
+  },
+  infoError: {
+    color: '#999',
+    fontWeight: '400',
   },
   notesSection: {
     marginBottom: 20,

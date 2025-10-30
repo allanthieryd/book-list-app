@@ -15,6 +15,7 @@ import { bookService } from '../services/bookService';
 import BookCard from '../components/BookCard';
 import SearchBar from '../components/SearchBar';
 import FilterBar, { FilterType, SortType } from '../components/FilterBar';
+import DashboardStats from '../components/DashboardStats';
 import { searchIncludes } from '../utils/searchHelper';
 
 export default function HomeScreen() {
@@ -175,6 +176,7 @@ export default function HomeScreen() {
       />
 
       <FlatList
+        ListHeaderComponent={<DashboardStats />}
         data={filteredBooks}
         renderItem={renderBook}
         keyExtractor={keyExtractor}

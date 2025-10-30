@@ -35,4 +35,31 @@ export const coverService = {
   getPlaceholderUrl(): string {
     return 'https://via.placeholder.com/300x450/007AFF/FFFFFF?text=Pas+de+couverture';
   },
+
+  /**
+   * Récupère le nombre d'éditions depuis l'API OpenLibrary
+   * @param title Titre du livre à rechercher
+   * @param author Auteur du livre à rechercher
+   * @returns Nombre d'éditions trouvées ou null en cas d'erreur
+   */
+  async getEditionsCount(title: string, author: string): Promise<number | null> {
+    try {
+      // Construire la requête avec titre et auteur
+      const query = encodeURIComponent(`${title} ${author}`);
+      const response = await fetch(`https://openlibrary.org/search.json?q=${query}&mode=everything`);
+
+      if (!response.ok) {
+        console.error('Erreur lors de la requête OpenLibrary:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+
+      // Retourner le nombre de documents trouvés (numFound)
+      return data.numFound || 0;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des éditions:', error);
+      return null;
+    }
+  },
 };
