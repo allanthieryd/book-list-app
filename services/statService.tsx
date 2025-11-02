@@ -1,3 +1,15 @@
+/* Si l'API actuelle ne fonctionne plus, remplacer par cette version locale:
+
+import { Platform } from 'react-native';
+
+
+const API_URL =
+  Platform.OS === 'android'
+    ? 'http://10.0.2.2:3000/stats'
+    : 'http://localhost:3000/stats';
+
+*/
+
 const API_URL = 'https://api.books.tristan-renard.com/stats';
 
 export interface BookStats {
