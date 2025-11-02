@@ -51,7 +51,9 @@ Join our community of developers creating universal apps.
 
 ## Usage de l'application
 
-Ce projet nécessite l'utilisation de l'API de [https://github.com/MaDesOcr/API-BOOKS](https://github.com/MaDesOcr/API-BOOKS)
+Ce projet utilise l'API suivante: [https://api.books.tristan-renard.com/](https://api.books.tristan-renard.com/).
+
+Si cette dernière n'est plus fonctionelle, vous pouvez utiliser l'API suivante: [https://github.com/MaDesOcr/API-BOOKS](https://github.com/MaDesOcr/API-BOOKS).
 
 Une fois l'API lancée, vous pouvez effectuer la commande:
 ```bash
